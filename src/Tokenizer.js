@@ -5,6 +5,7 @@ import {
   escape,
   findClosingBracket
 } from './helpers.js';
+import { CellCalculator } from './TableFunction';
 
 function outputLink(cap, link, raw, lexer) {
   const href = link.href;
@@ -425,6 +426,36 @@ export class Tokenizer {
           row = item.rows[j];
           for (k = 0; k < row.length; k++) {
             row[k].tokens = [];
+            // mathematic and logic functions
+            // if(row[k].text.match(/=(sum|sumIfNumber)\(.*\)=/smi)) {
+            //   console.log("[STATUS] found a function");
+              
+            //   if(row[k].text.match(/=sum\([a-z][a-z]*[0-9]+-[a-z][a-z]*[0-9]+\)=/smi)) {
+            //     console.log("[FUNCTION] sum");
+            //     var found = row[k].text.match(/=sum\([a-z][a-z]*[0-9]+-[a-z][a-z]*[0-9]+\)=/smi);
+            //     found.forEach(element => {
+            //       var bounds = element.match(/(?<=sum\().*?(?=\)=)/gs)[0].split('-');
+            //       var cell = [];
+                  
+            //       bounds.forEach(bound => {
+            //         cell.push(tableFormatToNumerical(bound));
+            //       });
+
+            //       var sum = 0; 
+            //       for(var m = Math.min(cell[0].column, cell[1].column); m <= Math.max(cell[0].column, cell[1].column); m++) {
+            //         for(var n = Math.min(cell[0].row, cell[1].row); n <= Math.max(cell[0].row, cell[1].row); n++) {
+            //           sum += parseFloat(item.rows[n - 1][m - 1].text);
+            //         }
+            //       }
+            //       row[k].text = sum.toString();
+            //     });
+            //   }
+            //   else if(row[k].text.match(/=sumIfNumber\([a-z][a-z]*[0-9]+-[a-z][a-z]*[0-9]+\)=/smi)) {
+            //     console.log("[FUNCTION] sum if number");
+
+            //   }
+            // }
+            row[k].text = CellCalculator(item.rows, row[k].text);
             this.lexer.inline(row[k].text, row[k].tokens);
           }
         }
