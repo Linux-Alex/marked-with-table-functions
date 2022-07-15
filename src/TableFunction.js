@@ -1,3 +1,10 @@
+import {defaults} from './defaults';
+
+var oldParseFloat = parseFloat;
+parseFloat = function(str) {
+    return Math.round(oldParseFloat(str) * 100000) / 100000;
+}
+
 // table format to row and column
 /**
  * @param {string} cell
@@ -51,6 +58,45 @@ const simpleMathOperations = [
         }
     ]
 ];
+
+const logicalOperations = [
+    {
+        operator: "=",
+        logOperation: function(a, b) {
+            return a == b ? 1 : 0;
+        }
+    },
+    {
+        operator: "!=",
+        logOperation: function(a, b) {
+            return a != b ? 1 : 0;
+        }
+    },
+    {
+        operator: "<",
+        logOperation: function(a, b) {
+            return a < b ? 1 : 0;
+        }
+    },
+    {
+        operator: ">",
+        logOperation: function(a, b) {
+            return a > b ? 1 : 0;
+        }
+    },
+    {
+        operator: "<=",
+        logOperation: function(a, b) {
+            return a <= b ? 1 : 0;
+        }
+    },
+    {
+        operator: ">=",
+        logOperation: function(a, b) {
+            return a >= b;
+        }
+    }
+]
 
 const arithmeticalFunctions = [
     {
@@ -137,25 +183,83 @@ const arithmeticalFunctions = [
             }
             return sum / numberOfElements;
         }
-    },
+    }
 ];
 
-const functionDetection = new RegExp(
+const arithmeticalFunctionDetection = new RegExp(
     "(" + arithmeticalFunctions.map(function(elem) {
         return elem.detect
     }).join("|") + ")", "i"
 );
 
-const maxIterationBeforeError = 25;
+const logicalFunctions = [
+    {
+        operator: "if",
+        detect: "^if\\(([a-z]+[0-9]+|[0-9]+)\\s*(<=|>=|<|>|=|!=)\\s*([a-z]+[0-9]+|[0-9]+)\\s*,",
+        
+        logFun: function(data, table, it) {
+            var fun = extractSubFunction(data);
+            var fullCommand = "";
+            if(fun.problems) {
+                return fun.str;
+            }
+            else {
+                fun = fun.str;
+            }
+            console.log(fun);
+            console.log("tukaj vse dela");
+            var ifStatement = ["", "", ""];
 
-console.log("__________");
-console.log(functionDetection);
+            for(var i = 0, k = 0, brackets = 0; i < fun.length && k < 3; i++) {
+                fullCommand += fun[i];
+                if(fun[i] == '(')
+                    brackets++;
+                else if(fun[i] == ')')
+                    brackets--;
+                
+                if(fun[i] == ',' && brackets == 0)
+                    k++;
+                else
+                    ifStatement[k] += fun[i];
+            }
+            
+            console.log(ifStatement);
+            console.log(ifStatement.filter(elem => elem.length == 0));
+            
+            if(brackets != 0 || ifStatement.filter(elem => elem.length == 0).length > 0) {
+                return "[ERROR]";
+            }
+
+            console.log(ifStatement);
+
+            var conditionInputs = [], conditionOperators = [];
+            // ToDo:
+            var conditionResult = solveFunction_(table, ifStatement[0], 1, true);
+            console.log("Condition result:");
+            console.log(conditionResult);
+
+            return {
+                command: "if(" + fullCommand + ")",
+                value: solveFunction_(table, parseInt(conditionResult) > 0 ? ifStatement[1] : ifStatement[2], 1)
+            };
+        }
+    }
+];
+
+const logicalFunctionsDetection = new RegExp(
+    "(" + logicalFunctions.map(function(elem) {
+        return elem.detect
+    }).join("|") + ")", "i"
+);
+
+// console.log("__________");
+// console.log(arithmeticalFunctionDetection);
 
 /**
  * @param {string} cell
  */
 export function CellCalculator(table, cell, it = 0) {
-    if(it > maxIterationBeforeError) {
+    if(it > defaults.tableFunctionRecursionNumber) {
         return "[ERROR]";
     }
     else if(/==.*==/i.test(cell)) {
@@ -197,7 +301,7 @@ function detectAllFunctions(cell) {
 }
 
 
-function solveFunction_(table, fun, it) {
+function solveFunction_(table, fun, it, logicFun = false) {
     var numbers = [], operations = [];
     while(fun.length > 0) {
         while(fun[0] == ' ') {
@@ -217,12 +321,17 @@ function solveFunction_(table, fun, it) {
                 found = fun.match(/^(\+|\-|\*|\/|\^)/gmi)[0];
                 operations.push(found);
             }
+            else if(logicFun && /^(<=|>=|<|>|=|!=)/.test(fun)) {
+                found = fun.match(/^(<=|>=|<|>|=|!=)/gmi)[0];
+                operations.push(found);
+                console.log("[STATUS] Found one logical operator");
+            }
             else {
                 console.log("[ERROR] Expected operator between operands. \n" + fun);
                 return "[ERROR]";
             }
         }
-        else if(functionDetection.test(fun)) {
+        else if(arithmeticalFunctionDetection.test(fun)) {
             arithmeticalFunctions.forEach((elem) => {
                 if(new RegExp(elem.detect, "i").test(fun)) {
                     found = fun.match(new RegExp(elem.detect, "i"))[0];
@@ -231,11 +340,17 @@ function solveFunction_(table, fun, it) {
                 }
             });
         }
+        else if(logicalFunctionsDetection.test(fun)) {
+            logicalFunctions.filter(elem => (new RegExp(elem.detect)).test(fun)).forEach((elem) => {
+                var tmp = elem.logFun(fun, table, it++);
+                found = tmp.command;    // find a better name
+                numbers.push(tmp.value);
+            });
+        }
         else if(/^\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)/.test(fun)) {
             found = fun.match(/^\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)/gmi)[0];
-            console.log("[STATUS] Found a subfunction");
-            console.log(found.substring(1, found.length - 1));
-            numbers.push(solveFunction_(table, found.substring(1, found.length - 1), it++));
+            console.log("[STATUS] Found a subfunction:\n\t" + found.substring(1, found.length - 1));
+            numbers.push(solveFunction_(table, found.substring(1, found.length - 1), it++, logicFun));
         }
         else if(/^[a-z][a-z]*[0-9][0-9]*/i.test(fun)) {
             found = fun.match(/^[a-z][a-z]*[0-9][0-9]*/gmi)[0];
@@ -253,6 +368,7 @@ function solveFunction_(table, fun, it) {
             numbers.push(found);
         }
         else {
+            console.log("[ERROR] Found invalid string in function.");
             return "[ERROR]";
         }
 
@@ -265,7 +381,7 @@ function solveFunction_(table, fun, it) {
             //console.log(simpleMathOperations[i].operator + "\t" + operations[k]);
             for(var j = 0; j < simpleMathOperations[i].length; j++) {
                 if(simpleMathOperations[i][j].operator == operations[k]) {
-                    numbers[k] = simpleMathOperations[i][j].mathFun(parseFloat(numbers[k]), parseFloat(numbers[k+1]))
+                    numbers[k] = parseFloat(simpleMathOperations[i][j].mathFun(parseFloat(numbers[k]), parseFloat(numbers[k+1])));
                     operations.splice(k, 1);
                     numbers.splice(k+1, 1);
                     k--;
@@ -274,15 +390,61 @@ function solveFunction_(table, fun, it) {
         }
     }
 
+    // Logical operations
+    for(var k = 0; k < numbers.length - 1; k++) {
+        for(var i = 0; i < logicalOperations.length; i++) {
+            if(logicalOperations[i].operator == operations[k]) {
+                numbers[k] = parseFloat(logicalOperations[i].logOperation(parseFloat(numbers[k]), parseFloat(numbers[k+1])));
+                operations.splice(k, 1);
+                numbers.splice(k+1, 1);
+                k--;
+            }
+        }
+    }
+
     console.log("End of calculating: " + numbers[0]);
-    if(numbers.length == 1 && operations.length == 0)
+    if(numbers.length == 1 && operations.length == 0) {
+        console.log("[STATUS] Calculated correct. Result: " + numbers[0]);
         return numbers[0];
-    else 
+    }
+    else {
+        console.log("[ERROR] Result is not calculated.\n\tLeft numbers: " + numbers.toString() + "\n\tLeft operations: " + operations.toString());
         return "[ERROR]";
+    }
 }
 
 
-/**
- * Iskanje vngezdenih funkcij s pomočjo oklepajev
- *      regex: \((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)
- */
+function extractSubFunction(fun) {
+    var openBrackets = 0, closedBrackets = 0;
+    var subfunction = "";
+
+    while(fun.length > 0) {
+        
+        if(fun[0] == '(') {
+            openBrackets++;
+        }
+        else if(fun[0] == ')') {
+            closedBrackets++;
+        }
+        
+        if(openBrackets != 0) {
+            if(closedBrackets == openBrackets)
+                break;
+            else {
+                subfunction += fun[0];
+            }
+        }
+
+        fun = fun.substring(1);
+    }
+
+    return {
+        problems: openBrackets != closedBrackets,
+        str: subfunction.substring(1)
+    };
+
+    if(openBrackets != closedBrackets)
+        return "[ERROR]";
+    else
+        return subfunction.substring(1);
+}

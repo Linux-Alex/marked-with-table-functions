@@ -18,7 +18,9 @@ export function getDefaults() {
     smartypants: false,
     tokenizer: null,
     walkTokens: null,
-    xhtml: false
+    xhtml: false,
+    tableFunctions: true,
+    tableFunctionRecursionNumber: 25
   };
 }
 
