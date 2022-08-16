@@ -195,7 +195,8 @@ const arithmeticalFunctionDetection = new RegExp(
 const logicalFunctions = [
     {
         operator: "if",
-        detect: "^if\\(([a-z]+[0-9]+|[0-9]+)\\s*(<=|>=|<|>|=|!=)\\s*([a-z]+[0-9]+|[0-9]+)\\s*,",
+        //detect: "^if\\(([a-z]+[0-9]+|[0-9]+)\\s*(<=|>=|<|>|=|!=)\\s*([a-z]+[0-9]+|[0-9]+)\\s*,",
+        detect: "^if\\(",
         
         logFun: function(data, table, it) {
             var fun = extractSubFunction(data);
@@ -234,13 +235,13 @@ const logicalFunctions = [
 
             var conditionInputs = [], conditionOperators = [];
             // ToDo:
-            var conditionResult = solveFunction_(table, ifStatement[0], 1, true);
+            var conditionResult = solveFunction_(table, ifStatement[0], it+1, true);
             console.log("Condition result:");
             console.log(conditionResult);
 
             return {
                 command: "if(" + fullCommand + ")",
-                value: solveFunction_(table, parseInt(conditionResult) > 0 ? ifStatement[1] : ifStatement[2], 1)
+                value: solveFunction_(table, parseInt(conditionResult) > 0 ? ifStatement[1] : ifStatement[2], it+1)
             };
         }
     }
@@ -320,14 +321,27 @@ function solveFunction_(table, fun, it, logicFun = false) {
             if(/^(\+|\-|\*|\/|\^)/.test(fun)) {
                 found = fun.match(/^(\+|\-|\*|\/|\^)/gmi)[0];
                 operations.push(found);
+                console.log("[STATUS] Found one arithmetical operator.");
             }
-            else if(logicFun && /^(<=|>=|<|>|=|!=)/.test(fun)) {
+            else if(logicFun == true && /^(<=|>=|<|>|=|!=)/.test(fun)) {
                 found = fun.match(/^(<=|>=|<|>|=|!=)/gmi)[0];
                 operations.push(found);
-                console.log("[STATUS] Found one logical operator");
+                console.log("[STATUS] Found one logical operator.");
             }
             else {
                 console.log("[ERROR] Expected operator between operands. \n" + fun);
+                return "[ERROR]";
+            }
+        }
+        else if(/^('([^']*)'|"([^"]*)")/i.test(fun)) {
+            found = fun.match(/^('([^']*)'|"([^"]*)")/gmi)[0];
+            var tmp = fun.substring(found.length);
+            if(tmp.length == 0 || /^\s*(;|$)/i.test(tmp)) {
+                console.log("[STATUS] Found some text to print.");
+                return found.substring(1, found.length - 1);
+            }
+            else {
+                console.log("[ERROR] Found invalid string in function.");
                 return "[ERROR]";
             }
         }
@@ -335,7 +349,7 @@ function solveFunction_(table, fun, it, logicFun = false) {
             arithmeticalFunctions.forEach((elem) => {
                 if(new RegExp(elem.detect, "i").test(fun)) {
                     found = fun.match(new RegExp(elem.detect, "i"))[0];
-                    console.log("[STATUS] Found function:" + elem.operator.toUpperCase());
+                    console.log("[STATUS] Found an arithmetical function:" + elem.operator.toUpperCase());
                     numbers.push(elem.mathFun(found.match(elem.dataExtract)[0], table, it++));
                 }
             });
@@ -343,7 +357,11 @@ function solveFunction_(table, fun, it, logicFun = false) {
         else if(logicalFunctionsDetection.test(fun)) {
             logicalFunctions.filter(elem => (new RegExp(elem.detect)).test(fun)).forEach((elem) => {
                 var tmp = elem.logFun(fun, table, it++);
+                console.log("[STATUS] Found a logical function:" + fun);
                 found = tmp.command;    // find a better name
+                if(found == "[ERROR]") {
+                    return "[ERROR]";
+                }
                 numbers.push(tmp.value);
             });
         }
@@ -357,6 +375,7 @@ function solveFunction_(table, fun, it, logicFun = false) {
 
             if(numbers.length == operations.length) {
                 numbers.push(CellCalculator(table, table[tableFormatToNumerical(found).row - 1][tableFormatToNumerical(found).column - 1].text, it++));
+                console.log("[STATUS] Found a cell reference.");
             }
             else if(operation == null) {
                 console.log("[ERROR] Can't calculate without operator.");
@@ -365,14 +384,18 @@ function solveFunction_(table, fun, it, logicFun = false) {
         }
         else if(/^(([0-9]+)(\.[0-9]+)?)|(\.?[0-9]+)/.test(fun)) {
             found = fun.match(/^(([0-9]+)(\.[0-9]+)?)|(\.?[0-9]+)/gmi)[0];
-            numbers.push(found);
+            numbers.push(parseFloat(found));
+            console.log("[STATUS] Found a real number.");
         }
         else {
             console.log("[ERROR] Found invalid string in function.");
+            console.log(fun);
             return "[ERROR]";
         }
 
-        fun = fun.substring(found.length);
+        fun = fun.substring(found.toString().length);
+
+        console.log("Numbers: ", numbers, "Operators: ", operations, "Fun: ", fun);
     }
 
     // Calculating
@@ -394,7 +417,7 @@ function solveFunction_(table, fun, it, logicFun = false) {
     for(var k = 0; k < numbers.length - 1; k++) {
         for(var i = 0; i < logicalOperations.length; i++) {
             if(logicalOperations[i].operator == operations[k]) {
-                numbers[k] = parseFloat(logicalOperations[i].logOperation(parseFloat(numbers[k]), parseFloat(numbers[k+1])));
+                numbers[k] = (logicalOperations[i].logOperation((numbers[k]), (numbers[k+1])));
                 operations.splice(k, 1);
                 numbers.splice(k+1, 1);
                 k--;

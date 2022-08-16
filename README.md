@@ -2,78 +2,13 @@
   <img width="60px" height="60px" src="https://marked.js.org/img/logo-black.svg" align="right" />
 </a>
 
-# Marked
+# Marked with table functions
 
-[![npm](https://badgen.net/npm/v/marked)](https://www.npmjs.com/package/marked)
-[![gzip size](https://badgen.net/badgesize/gzip/https://cdn.jsdelivr.net/npm/marked/marked.min.js)](https://cdn.jsdelivr.net/npm/marked/marked.min.js)
-[![install size](https://badgen.net/packagephobia/install/marked)](https://packagephobia.now.sh/result?p=marked)
-[![downloads](https://badgen.net/npm/dt/marked)](https://www.npmjs.com/package/marked)
-[![github actions](https://github.com/markedjs/marked/workflows/Tests/badge.svg)](https://github.com/markedjs/marked/actions)
-[![snyk](https://snyk.io/test/npm/marked/badge.svg)](https://snyk.io/test/npm/marked)
-
-- ⚡ built for speed
-- ⬇️ low-level compiler for parsing markdown without caching or blocking for long periods of time
-- ⚖️ light-weight while implementing all markdown features from the supported flavors & specifications
-- 🌐 works in a browser, on a server, or from a command line interface (CLI)
-
-## Demo
-
-Checkout the [demo page](https://marked.js.org/demo/) to see marked in action ⛹️
-
-## Docs
-
-Our [documentation pages](https://marked.js.org) are also rendered using marked 💯
-
-Also read about:
-
-* [Options](https://marked.js.org/#/USING_ADVANCED.md)
-* [Extensibility](https://marked.js.org/#/USING_PRO.md)
-
-## Compatibility
-
-**Node.js:** Only [current and LTS](https://nodejs.org/en/about/releases/) Node.js versions are supported. End of life Node.js versions may become incompatible with Marked at any point in time.
-
-**Browser:** Not IE11 :)
-
-## Installation
-
-**CLI:** 
-
-```sh 
-npm install -g marked
-```
-
-**In-browser:** 
-
-```sh
-npm install marked
-```
+The repository is based on [Marked](https://github.com/markedjs/marked) repository. But here are the table functions added.
 
 ## Usage
 
-### Warning: 🚨 Marked does not [sanitize](https://marked.js.org/#/USING_ADVANCED.md#options) the output HTML. Please use a sanitize library, like [DOMPurify](https://github.com/cure53/DOMPurify) (recommended), [sanitize-html](https://github.com/apostrophecms/sanitize-html) or [insane](https://github.com/bevacqua/insane) on the *output* HTML! 🚨
-
-```
-DOMPurify.sanitize(marked.parse(`<img src="x" onerror="alert('not happening')">`));
-```
-
-**CLI**
-
-``` bash
-# Example with stdin input
-$ marked -o hello.html
-hello world
-^D
-$ cat hello.html
-<p>hello world</p>
-```
-
-```bash
-# Print all options
-$ marked --help
-```
-
-**Browser**
+Download the project and copy the `marked.min.js` file to the server (or just download this one file) and use the example under this text.
 
 ```html
 <!doctype html>
@@ -84,7 +19,7 @@ $ marked --help
 </head>
 <body>
   <div id="content"></div>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="marked.min.js"></script>
   <script>
     document.getElementById('content').innerHTML =
       marked.parse('# Marked in the browser\n\nRendered by **marked**.');
@@ -93,6 +28,72 @@ $ marked --help
 </html>
 ```
 
-## License
+## Functions
 
-Copyright (c) 2011-2022, Christopher Jeffrey. (MIT License)
+All functions work only in tables and are writen between `==` signs. Example: `==SUM(B1-B6)==`.
+
+### Example function
+
+**Input:**
+```readme
+# Finding Rational Zeroes
+
+Polinom function: f(x) = 4x² + 4x - 4
+
+| Designation  | Value                      |
+| :----------: | :------------------------: |
+| a [x²]       | 4                          |
+| b [x]        | 4                          |
+| c            | -4                         |
+| Discriminant | ==(b2^2-4*b1*b3)==         |
+| x1           | ==(0-b2-b4^(1/2))/(2*b1)== |
+| x2           | ==(0-b2+b4^(1/2))/(2*b1)== |
+
+```
+
+**Output:**
+| Designation  | Value    |
+| :----------: | :------: |
+| a [x²]       | 4        |
+| b [x]        | 4        |
+| c            | -4       |
+| Discriminant | 80       |
+| x1           | -1.61803 |
+| x2           | 0.61803  |
+
+
+### Math operators 
+
+| Operator | Usage | Example | Result |
+| :-: | :-- | :-- | :-: |
+| + | addition | `==15+3==` | 18 |
+| - | subtraction | `==15-3==` | 12 |
+| * | multiplication | `==15*3==` | 45 |
+| / | division | `==15*3==` | 5 |
+| ^ | exponential | `==15^3==` | 3375 |
+
+You can calculate **roots** with exponents.
+*Example:* if you want to calculate the square root of 16, you can use `==16^(1/2)==` instead.
+
+### Math functions
+
+| Operator | Usage | Example |
+| :-: | :-- | :-- |
+| sum(...) | summary | `==sum(B1-B3)==` |
+| avg(...) | average | `==avg(B1-B3)==` |
+| min(...) | minimum | `==min(B1-B3)==` |
+| max(...) | maximum | `==max(B1-B3)==` |
+
+### Conditional statement
+
+**Command structure:**
+
+```
+==IF(CONDITION, COMMANDS_IF_STATEMENT_IS_TRUE, COMMANDS_IF_STATEMENT_IS_FALSE)==
+```
+
+**Examples:**
+
+```readme
+==if(5>3, "Five is greater than three.", "Five isn't greater then three")==
+```
